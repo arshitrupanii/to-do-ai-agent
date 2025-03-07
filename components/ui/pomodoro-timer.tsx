@@ -1,50 +1,35 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from './button';
-import { PlayIcon, PauseIcon, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
-interface PomodoroTimerProps {
-  onComplete?: () => void;
-}
+const POMODORO_TIME = 25 * 60; // 25 minutes
+const BREAK_TIME = 5 * 60; // 5 minutes
 
-export function PomodoroTimer({ onComplete }: PomodoroTimerProps) {
-  const { toast } = useToast();
-  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
+export function PomodoroTimer() {
+  const [time, setTime] = useState(POMODORO_TIME);
   const [isRunning, setIsRunning] = useState(false);
-  const [completedSessions, setCompletedSessions] = useState<number>(() => {
-    const savedSessions = localStorage.getItem('completedPomodoros');
-    return savedSessions ? JSON.parse(savedSessions) : 0;
-  });
+  const [isBreak, setIsBreak] = useState(false);
+  const [audio] = useState(new Audio("/path/to/meditation-music.mp3"));
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((time) => {
-          if (time <= 1) {
-            setIsRunning(false);
-            onComplete?.();
-            toast({
-              title: "Pomodoro Complete!",
-              description: "Time to take a break.",
-            });
-            setCompletedSessions((prev) => {
-              const newCount = prev + 1;
-              localStorage.setItem('completedPomodoros', JSON.stringify(newCount));
-              return newCount;
-            });
-            return 0;
+    let timer: NodeJS.Timeout;
+    if (isRunning) {
+      timer = setInterval(() => {
+        setTime((prevTime) => {
+          if (prevTime <= 1) {
+            setIsBreak(!isBreak);
+            setTime(isBreak ? POMODORO_TIME : BREAK_TIME);
+            audio.play();
+            return isBreak ? POMODORO_TIME : BREAK_TIME;
           }
-          return time - 1;
+          return prevTime - 1;
         });
       }, 1000);
     }
-
-    return () => clearInterval(interval);
-  }, [isRunning, timeLeft, onComplete, toast]);
+    return () => clearInterval(timer);
+  }, [isRunning, isBreak, audio]);
 
   const toggleTimer = () => {
     setIsRunning(!isRunning);
@@ -52,39 +37,23 @@ export function PomodoroTimer({ onComplete }: PomodoroTimerProps) {
 
   const resetTimer = () => {
     setIsRunning(false);
-    setTimeLeft(25 * 60);
+    setTime(POMODORO_TIME);
+    setIsBreak(false);
   };
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+  };
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="text-sm font-medium">
-        {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={toggleTimer}
-        className="h-8 w-8 p-0"
-      >
-        {isRunning ? (
-          <PauseIcon className="h-4 w-4" />
-        ) : (
-          <PlayIcon className="h-4 w-4" />
-        )}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={resetTimer}
-        className="h-8 w-8 p-0"
-      >
-        <RefreshCw className="h-4 w-4" />
-      </Button>
-      <div className="ml-4 text-sm">
-        Completed: {completedSessions}
+    <div className="pomodoro-timer">
+      <h2 className="text-2xl font-bold">{isBreak ? "Break Time" : "Focus Time"}</h2>
+      <div className="time-display text-4xl font-mono">{formatTime(time)}</div>
+      <div className="controls mt-4">
+        <Button onClick={toggleTimer}>{isRunning ? "Pause" : "Start"}</Button>
+        <Button onClick={resetTimer} className="ml-2">Reset</Button>
       </div>
     </div>
   );

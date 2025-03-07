@@ -64,6 +64,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import axios from 'axios';
 
 // New TaskCard component designed here instead of importing
 const TaskCard = ({ task, onToggleComplete, onDelete, onEdit }) => {
@@ -282,18 +283,42 @@ const TaskManager = () => {
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const { toast } = useToast();
+  const [newTask, setNewTask] = useState({ title: '', description: '' });
 
   useEffect(() => {
-    setTasks(mockTasks);
+    const fetchTasks = async () => {
+      try {
+        const response = await axios.get('/api/tasks');
+        setTasks(response.data.data);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        toast({
+          title: "Error fetching tasks",
+          description: "There was an issue retrieving tasks. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchTasks();
   }, []);
 
-  const handleAddTask = (newTask) => {
-    setTasks([newTask, ...tasks]);
-    setShowAddForm(false);
-    toast({
-      title: "Task created",
-      description: "Your new task has been added successfully.",
-    });
+  const handleAddTask = async () => {
+    try {
+      const response = await axios.post('/api/tasks', newTask);
+      setTasks([...tasks, response.data.data]);
+      setNewTask({ title: '', description: '' });
+      toast({
+        title: "Task created",
+        description: "Your new task has been added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Error adding task",
+        description: "There was an issue adding your task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleToggleComplete = (id, completed) => {
