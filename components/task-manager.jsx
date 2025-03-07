@@ -91,7 +91,7 @@ const TaskManager = () => {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axios.get('api/tasks');
+        const response = await axios.get('/api/tasks');
         if (response.data.success && Array.isArray(response.data.data)) {
           // Ensure each task has the required fields
           const formattedTasks = response.data.data.map(task => ({
@@ -137,7 +137,7 @@ const TaskManager = () => {
         dueDate: newTask.dueDate || null
       };
       
-      const response = await axios.post('api/tasks', taskToAdd);
+      const response = await axios.post('/api/tasks', taskToAdd);
       
       if (response.data.success && response.data.data) {
         // Format the returned task to match our component's expected structure
@@ -198,7 +198,7 @@ const TaskManager = () => {
       // Create an update object that matches the MongoDB schema
       const updateData = { completed };
       
-      const response = await axios.put(`api/tasks/${mongoId}`, updateData);
+      const response = await axios.put(`/api/tasks/${mongoId}`, updateData);
       
       if (response.data.success) {
         setTasks(tasks.map(task => 
@@ -228,7 +228,7 @@ const TaskManager = () => {
       const mongoId = id.startsWith('new-') ? null : id;
       
       if (mongoId) {
-        await axios.delete(`api/tasks/${mongoId}`);
+        await axios.delete(`/api/tasks/${mongoId}`);
       }
       
       setTasks(tasks.filter(task => task.id !== id));
