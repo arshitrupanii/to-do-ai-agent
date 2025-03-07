@@ -65,231 +65,54 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import axios from 'axios';
-
-// New TaskCard component designed here instead of importing
-const TaskCard = ({ task, onToggleComplete, onDelete, onEdit }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedTask, setEditedTask] = useState({ ...task });
-  
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-amber-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-slate-500';
-    }
-  };
-  
-  const getDueStatus = () => {
-    if (!task.dueDate) return null;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(task.dueDate);
-    dueDate.setHours(0, 0, 0, 0);
-    
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-      return { label: "Overdue", variant: "destructive" };
-    } else if (diffDays === 0) {
-      return { label: "Due today", variant: "warning" };
-    } else if (diffDays === 1) {
-      return { label: "Due tomorrow", variant: "warning" };
-    } else if (diffDays <= 3) {
-      return { label: `Due in ${diffDays} days`, variant: "warning" };
-    } else {
-      return { label: `Due in ${diffDays} days`, variant: "outline" };
-    }
-  };
-  
-  const dueStatus = getDueStatus();
-  
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-  
-  const handleSave = () => {
-    onEdit(task.id, editedTask);
-    setIsEditing(false);
-  };
-  
-  return (
-    <Card className={`mb-4 shadow-lg ${task.completed ? 'opacity-80' : ''} bg-[#333]`}>
-      <CardHeader className="p-4 pb-0">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <Checkbox 
-              id={`task-${task.id}`}
-              checked={task.completed}
-              onCheckedChange={(checked) => onToggleComplete(task.id, checked)}
-              className="mt-1 text-[#ff7518]"
-            />
-            
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className={`font-medium ${task.completed ? 'line-through text-[#666]' : ''}`}>
-                  {task.title}
-                </h3>
-                <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-              </div>
-              
-              {task.description && (
-                <CardDescription className={`mt-1 ${task.completed ? 'line-through' : ''}`}>
-                  {task.description}
-                </CardDescription>
-              )}
-            </div>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#ff7518]">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#222] text-white">
-              <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onToggleComplete(task.id, !task.completed)}>
-                {task.completed ? (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Mark as pending
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Mark as completed
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => onDelete(task.id)}
-                className="text-red-500 focus:text-red-500"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-4 pt-2">
-        <div className="flex flex-wrap gap-2 mt-2">
-          {task.tags && task.tags.map(tag => (
-            <Badge key={tag} variant="secondary" className="text-xs bg-[#4b0082] text-white">
-              <Tag className="h-3 w-3 mr-1" />
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex justify-between items-center text-sm text-[#666]">
-        <div className="flex items-center gap-2">
-          <Clock className="h-3 w-3" />
-          <span>Created {formatDate(task.createdAt)}</span>
-        </div>
-        
-        {dueStatus && (
-          <Badge variant={dueStatus.variant} className="ml-auto bg-[#ffcc00] text-black">
-            {dueStatus.label}
-          </Badge>
-        )}
-      </CardFooter>
-      
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="bg-[#222] text-white">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="edit-title" className="text-sm font-medium">Title</label>
-              <Input
-                id="edit-title"
-                value={editedTask.title}
-                onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
-                className="bg-[#333] text-white"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="edit-description" className="text-sm font-medium">Description</label>
-              <Input
-                id="edit-description"
-                value={editedTask.description || ''}
-                onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
-                className="bg-[#333] text-white"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="edit-due-date" className="text-sm font-medium">Due Date</label>
-              <Input
-                id="edit-due-date"
-                type="date"
-                value={editedTask.dueDate ? new Date(editedTask.dueDate).toISOString().split('T')[0] : ''}
-                onChange={(e) => setEditedTask({ ...editedTask, dueDate: e.target.value })}
-                className="bg-[#333] text-white"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Priority</label>
-              <div className="flex gap-2">
-                {['low', 'medium', 'high'].map((priority) => (
-                  <Badge
-                    key={priority}
-                    variant={editedTask.priority === priority ? 'default' : 'outline'}
-                    className="capitalize cursor-pointer bg-[#4b0082] text-white"
-                    onClick={() => setEditedTask({ ...editedTask, priority })}
-                  >
-                    {priority}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" className="text-[#ff7518]">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleSave} className="bg-[#ff7518] text-black">Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-};
+import TaskCard from '@/components/ui/task-card';
 
 const TaskManager = () => {
   const [tasks, setTasks] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAIForm, setShowAIForm] = useState(false);
   const [view, setView] = useState('list');
+  const [newTask, setNewTask] = useState({
+    id: '',
+    title: '',
+    description: '',
+    completed: false,
+    createdAt: new Date().toISOString(),
+    priority: 'medium',
+    tags: []
+  });
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedPriority, setSelectedPriority] = useState(null);
+  const [selectedPriority, setSelectedPriority] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState('desc');
   const { toast } = useToast();
-  const [newTask, setNewTask] = useState({ title: '', description: '' });
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axios.get('/api/tasks');
-        setTasks(response.data.data);
+        const response = await axios.get('api/tasks');
+        if (response.data.success && Array.isArray(response.data.data)) {
+          // Ensure each task has the required fields
+          const formattedTasks = response.data.data.map(task => ({
+            id: task._id || task.id,
+            title: task.title || '',
+            description: task.description || '',
+            completed: task.completed || false,
+            createdAt: task.createdAt || new Date().toISOString(),
+            dueDate: task.dueDate || null,
+            priority: task.priority || 'medium',
+            tags: task.tags || []
+          }));
+          setTasks(formattedTasks);
+        } else {
+          console.error('Invalid response format:', response.data);
+          toast({
+            title: "Error fetching tasks",
+            description: "Received invalid data format from server.",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         console.error('Error fetching tasks:', error);
         toast({
@@ -304,13 +127,49 @@ const TaskManager = () => {
 
   const handleAddTask = async () => {
     try {
-      const response = await axios.post('/api/tasks', newTask);
-      setTasks([...tasks, response.data.data]);
-      setNewTask({ title: '', description: '' });
-      toast({
-        title: "Task created",
-        description: "Your new task has been added successfully.",
-      });
+      // Create a task object that matches the MongoDB schema
+      const taskToAdd = {
+        title: newTask.title,
+        description: newTask.description || '',
+        completed: false,
+        priority: newTask.priority || 'medium',
+        tags: newTask.tags || [],
+        dueDate: newTask.dueDate || null
+      };
+      
+      const response = await axios.post('api/tasks', taskToAdd);
+      
+      if (response.data.success && response.data.data) {
+        // Format the returned task to match our component's expected structure
+        const addedTask = {
+          id: response.data.data._id,
+          title: response.data.data.title,
+          description: response.data.data.description || '',
+          completed: response.data.data.completed || false,
+          createdAt: response.data.data.createdAt,
+          dueDate: response.data.data.dueDate || null,
+          priority: response.data.data.priority || 'medium',
+          tags: response.data.data.tags || []
+        };
+        
+        setTasks([...tasks, addedTask]);
+        setNewTask({
+          id: '',
+          title: '',
+          description: '',
+          completed: false,
+          createdAt: new Date().toISOString(),
+          priority: 'medium',
+          tags: []
+        });
+        setShowAddForm(false);
+        toast({
+          title: "Task created",
+          description: "Your new task has been added successfully.",
+        });
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Error adding task:', error);
       toast({
@@ -321,31 +180,117 @@ const TaskManager = () => {
     }
   };
 
-  const handleToggleComplete = (id, completed) => {
-    setTasks(
-      tasks.map((task) => (task.id === id ? { ...task, completed } : task))
-    );
-    toast({
-      title: completed ? "Task completed" : "Task reopened",
-      description: completed ? "Task marked as completed" : "Task marked as pending",
-    });
+  const handleToggleComplete = async (id, completed) => {
+    try {
+      const taskToUpdate = tasks.find(task => task.id === id);
+      if (!taskToUpdate) return;
+      
+      // Use MongoDB's _id for the API request
+      const mongoId = id.startsWith('new-') ? null : id;
+      if (!mongoId) {
+        // Handle local-only tasks that haven't been saved to MongoDB yet
+        setTasks(tasks.map(task => 
+          task.id === id ? { ...task, completed } : task
+        ));
+        return;
+      }
+      
+      // Create an update object that matches the MongoDB schema
+      const updateData = { completed };
+      
+      const response = await axios.put(`api/tasks/${mongoId}`, updateData);
+      
+      if (response.data.success) {
+        setTasks(tasks.map(task => 
+          task.id === id ? { ...task, completed } : task
+        ));
+        
+        toast({
+          title: completed ? "Task completed" : "Task reopened",
+          description: completed ? "Task marked as completed" : "Task marked as pending",
+        });
+      } else {
+        throw new Error('Failed to update task status');
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error updating task",
+        description: "There was an issue updating the task status.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteTask = (id) => {
-    setTasks(tasks.filter(task => task.id !== id));
-    toast({
-      title: "Task deleted",
-      description: "The task has been permanently removed.",
-      variant: "destructive"
-    });
+  const handleDeleteTask = async (id) => {
+    try {
+      // Use MongoDB's _id for the API request
+      const mongoId = id.startsWith('new-') ? null : id;
+      
+      if (mongoId) {
+        await axios.delete(`api/tasks/${mongoId}`);
+      }
+      
+      setTasks(tasks.filter(task => task.id !== id));
+      toast({
+        title: "Task deleted",
+        description: "The task has been removed.",
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Error deleting task",
+        description: "There was an issue deleting the task.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEditTask = (id, updatedTask) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, ...updatedTask } : task));
-    toast({
-      title: "Task updated",
-      description: "Your changes have been saved.",
-    });
+  const handleEditTask = async (id, updatedTask) => {
+    try {
+      // Use MongoDB's _id for the API request
+      const mongoId = id.startsWith('new-') ? null : id;
+      
+      if (!mongoId) {
+        // Handle local-only tasks that haven't been saved to MongoDB yet
+        setTasks(tasks.map(task => 
+          task.id === id ? { ...task, ...updatedTask } : task
+        ));
+        return;
+      }
+      
+      // Create an update object that matches the MongoDB schema
+      const updateData = {
+        title: updatedTask.title,
+        description: updatedTask.description || '',
+        completed: updatedTask.completed || false,
+        priority: updatedTask.priority || 'medium',
+        tags: updatedTask.tags || [],
+        dueDate: updatedTask.dueDate || null
+      };
+      
+      const response = await axios.put(`/api/tasks/${mongoId}`, updateData);
+      
+      if (response.data.success) {
+        setTasks(tasks.map(task => 
+          task.id === id ? { ...task, ...updatedTask } : task
+        ));
+        
+        toast({
+          title: "Task updated",
+          description: "The task has been updated successfully.",
+        });
+      } else {
+        throw new Error('Failed to update task');
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Error updating task",
+        description: "There was an issue updating the task.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleBulkDelete = (ids) => {
@@ -371,7 +316,7 @@ const TaskManager = () => {
 
   const clearFilters = () => {
     setSelectedTags([]);
-    setSelectedPriority(null);
+    setSelectedPriority('');
     setSearchQuery('');
   };
 
@@ -440,29 +385,29 @@ const TaskManager = () => {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={() => setShowAddForm(!showAddForm)} className="sm:w-auto">
+            <Button onClick={() => setShowAddForm(!showAddForm)} className="sm:w-auto bg-[#ff7518] text-black hover:bg-[#e56b16]">
               <Plus className="h-4 w-4 mr-2" />
               {showAddForm ? "Hide Form" : "New Task"}
             </Button>
             
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" className="sm:w-auto">
+                <Button variant="outline" className="sm:w-auto border-[#4b0082] text-[#4b0082] hover:bg-[#4b0082] hover:text-white">
                   <ListFilter className="h-4 w-4 mr-2" />
                   Bulk Actions
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-[#222] text-white">
                 <DialogHeader>
                   <DialogTitle>Bulk Actions</DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-gray-400">
                     Perform actions on multiple tasks at once.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <Button 
                     variant="destructive" 
-                    className="w-full"
+                    className="w-full bg-red-600 hover:bg-red-700"
                     onClick={() => handleBulkDelete(completedTasks.map(task => task.id))}
                     disabled={completedTasks.length === 0}
                   >
@@ -471,7 +416,7 @@ const TaskManager = () => {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="w-full"
+                    className="w-full border-[#ff7518] text-[#ff7518] hover:bg-[#ff7518] hover:text-black"
                     onClick={() => {
                       pendingTasks.forEach(task => {
                         handleToggleComplete(task.id, true);
@@ -489,7 +434,7 @@ const TaskManager = () => {
         </div>
         
         {/* Status Overview Card */}
-        <Card>
+        <Card className="bg-[#333] border-[#444]">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -497,7 +442,7 @@ const TaskManager = () => {
                   <h3 className="text-sm font-medium">Progress</h3>
                   <span className="text-sm text-muted-foreground">{stats.percentage}%</span>
                 </div>
-                <Progress value={stats.percentage} className="h-2" />
+                <Progress value={stats.percentage} className="h-2 bg-[#222]" indicatorClassName="bg-[#ff7518]" />
                 <p className="text-xs text-muted-foreground">
                   {stats.completed} of {stats.total} tasks completed
                 </p>
@@ -508,7 +453,7 @@ const TaskManager = () => {
                   <div className="text-3xl font-bold">{pendingTasks.length}</div>
                   <div className="text-sm text-muted-foreground">Pending</div>
                 </div>
-                <Separator orientation="vertical" className="h-12" />
+                <Separator orientation="vertical" className="h-12 bg-[#444]" />
                 <div className="text-center">
                   <div className="text-3xl font-bold">{completedTasks.length}</div>
                   <div className="text-sm text-muted-foreground">Completed</div>
@@ -520,7 +465,7 @@ const TaskManager = () => {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search tasks..."
-                    className="pl-8"
+                    className="pl-8 bg-[#222] border-[#444] text-white"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -532,9 +477,29 @@ const TaskManager = () => {
         
         {/* AI Task Creator */}
         {showAddForm && (
-          <Card className="border-dashed border-2 bg-accent/20">
+          <Card className="border-dashed border-2 bg-[#333] border-[#444]">
             <CardContent className="p-6">
-              <AITaskCreator onAddTask={handleAddTask} />
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Add New Task</h3>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Task title"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                    className="bg-[#222] border-[#444] text-white"
+                  />
+                  <Input
+                    placeholder="Description (optional)"
+                    value={newTask.description || ''}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    className="bg-[#222] border-[#444] text-white"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={handleAddTask} className="bg-[#ff7518] text-black hover:bg-[#e56b16]">Add Task</Button>
+                    <Button variant="outline" onClick={() => setShowAddForm(false)} className="border-[#444] text-white hover:bg-[#444]">Cancel</Button>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -549,12 +514,12 @@ const TaskManager = () => {
                     variant={view === 'list' ? 'default' : 'outline'} 
                     size="sm" 
                     onClick={() => setView('list')}
-                    className="h-9 px-3"
+                    className={`h-9 px-3 ${view === 'list' ? 'bg-[#ff7518] text-black' : 'border-[#444] text-white'}`}
                   >
                     <ListFilter className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>List View</TooltipContent>
+                <TooltipContent className="bg-[#222] text-white">List View</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             
@@ -565,12 +530,12 @@ const TaskManager = () => {
                     variant={view === 'calendar' ? 'default' : 'outline'} 
                     size="sm" 
                     onClick={() => setView('calendar')}
-                    className="h-9 px-3"
+                    className={`h-9 px-3 ${view === 'calendar' ? 'bg-[#ff7518] text-black' : 'border-[#444] text-white'}`}
                   >
                     <Calendar className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Calendar View</TooltipContent>
+                <TooltipContent className="bg-[#222] text-white">Calendar View</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             
@@ -581,27 +546,27 @@ const TaskManager = () => {
                     variant={view === 'stats' ? 'default' : 'outline'} 
                     size="sm" 
                     onClick={() => setView('stats')}
-                    className="h-9 px-3"
+                    className={`h-9 px-3 ${view === 'stats' ? 'bg-[#ff7518] text-black' : 'border-[#444] text-white'}`}
                   >
                     <BarChart4 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Statistics</TooltipContent>
+                <TooltipContent className="bg-[#222] text-white">Statistics</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             
-            <Separator orientation="vertical" className="h-8 mx-1 hidden sm:block" />
+            <Separator orientation="vertical" className="h-8 mx-1 hidden sm:block bg-[#444]" />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className="h-9 border-[#444] text-white">
                   {sortDirection === 'asc' ? <SortAsc className="h-4 w-4 mr-2" /> : <SortDesc className="h-4 w-4 mr-2" />}
                   {sortBy === 'createdAt' ? 'Date Created' : sortBy === 'dueDate' ? 'Due Date' : 'Priority'}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="start" className="bg-[#222] text-white">
                 <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-[#444]" />
                 <DropdownMenuItem onClick={() => { setSortBy('createdAt'); toggleSortDirection(); }}>
                   Date Created {sortBy === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </DropdownMenuItem>
@@ -618,40 +583,40 @@ const TaskManager = () => {
           <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className="h-9 border-[#444] text-white">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter
                   {(selectedTags.length > 0 || selectedPriority) && (
-                    <Badge variant="secondary" className="ml-2 px-1">
+                    <Badge variant="secondary" className="ml-2 px-1 bg-[#4b0082] text-white">
                       {selectedTags.length + (selectedPriority ? 1 : 0)}
                     </Badge>
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 bg-[#222] text-white">
                 <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-[#444]" />
                 
                 <div className="p-2">
                   <h4 className="text-sm font-medium mb-2">Priority</h4>
                   <div className="flex flex-wrap gap-1">
                     <Badge 
                       variant={selectedPriority === 'high' ? 'default' : 'outline'}
-                      className="cursor-pointer"
+                      className="cursor-pointer bg-[#4b0082] text-white"
                       onClick={() => setSelectedPriority(selectedPriority === 'high' ? null : 'high')}
                     >
                       High
                     </Badge>
                     <Badge 
                       variant={selectedPriority === 'medium' ? 'default' : 'outline'}
-                      className="cursor-pointer"
+                      className="cursor-pointer bg-[#4b0082] text-white"
                       onClick={() => setSelectedPriority(selectedPriority === 'medium' ? null : 'medium')}
                     >
                       Medium
                     </Badge>
                     <Badge 
                       variant={selectedPriority === 'low' ? 'default' : 'outline'}
-                      className="cursor-pointer"
+                      className="cursor-pointer bg-[#4b0082] text-white"
                       onClick={() => setSelectedPriority(selectedPriority === 'low' ? null : 'low')}
                     >
                       Low
@@ -659,7 +624,7 @@ const TaskManager = () => {
                   </div>
                 </div>
                 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-[#444]" />
                 
                 <div className="p-2">
                   <h4 className="text-sm font-medium mb-2">Tags</h4>
@@ -668,7 +633,7 @@ const TaskManager = () => {
                       <Badge 
                         key={tag}
                         variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                        className="cursor-pointer"
+                        className="cursor-pointer bg-[#4b0082] text-white"
                         onClick={() => toggleTagFilter(tag)}
                       >
                         <Tag className="h-3 w-3 mr-1" />
@@ -681,13 +646,13 @@ const TaskManager = () => {
                   </div>
                 </div>
                 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-[#444]" />
                 
                 <div className="p-2">
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="w-full justify-center"
+                    className="w-full justify-center text-[#ff7518]"
                     onClick={clearFilters}
                     disabled={selectedTags.length === 0 && !selectedPriority && !searchQuery}
                   >
@@ -703,7 +668,7 @@ const TaskManager = () => {
                 variant="ghost" 
                 size="sm"
                 onClick={clearFilters}
-                className="h-9"
+                className="h-9 text-[#ff7518]"
               >
                 <X className="h-4 w-4 mr-2" />
                 Clear All
@@ -711,12 +676,12 @@ const TaskManager = () => {
             )}
           </div>
         </div>
-        
+
         {/* Active Filters Display */}
         {(selectedTags.length > 0 || selectedPriority || searchQuery) && (
           <div className="flex flex-wrap items-center gap-2">
             {searchQuery && (
-              <Badge variant="secondary" className="flex items-center gap-1">
+              <Badge variant="secondary" className="flex items-center gap-1 bg-[#4b0082] text-white">
                 <Search className="h-3 w-3" />
                 "{searchQuery}"
                 <X 
@@ -727,7 +692,7 @@ const TaskManager = () => {
             )}
             
             {selectedPriority && (
-              <Badge variant="secondary" className="flex items-center gap-1 capitalize">
+              <Badge variant="secondary" className="flex items-center gap-1 capitalize bg-[#4b0082] text-white">
                 <AlertCircle className="h-3 w-3" />
                 {selectedPriority} priority
                 <X 
@@ -736,9 +701,9 @@ const TaskManager = () => {
                 />
               </Badge>
             )}
-            
+
             {selectedTags.map(tag => (
-              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+              <Badge key={tag} variant="secondary" className="flex items-center gap-1 bg-[#4b0082] text-white">
                 <Tag className="h-3 w-3" />
                 {tag}
                 <X 
@@ -749,19 +714,21 @@ const TaskManager = () => {
             ))}
           </div>
         )}
-        
+
         {view === 'list' && (
-          <Card>
+          <Card className="bg-[#333] border-[#444]">
             <CardHeader className="p-4 pb-0">
               <Tabs defaultValue="pending" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="pending">
+                <TabsList className="grid w-full grid-cols-3 bg-[#222]">
+                  <TabsTrigger value="pending" className="data-[state=active]:bg-[#ff7518] data-[state=active]:text-black">
                     Pending ({pendingTasks.length})
                   </TabsTrigger>
-                  <TabsTrigger value="completed">
+                  <TabsTrigger value="completed" className="data-[state=active]:bg-[#ff7518] data-[state=active]:text-black">
                     Completed ({completedTasks.length})
                   </TabsTrigger>
-                  <TabsTrigger value="all">All ({sortedTasks.length})</TabsTrigger>
+                  <TabsTrigger value="all" className="data-[state=active]:bg-[#ff7518] data-[state=active]:text-black">
+                    All ({sortedTasks.length})
+                  </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="pending" className="mt-6 px-2">
